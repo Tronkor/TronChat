@@ -1,0 +1,10 @@
+# Dependencies
+/node_modules
+
+# Logs
+*.log
+npm-debug.log*
+
+# IDE and OS files
+.vscode
+.DS_Store

@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>聊天室</title>
+    <link rel="stylesheet" href="chat.css">
+</head>
+<body>
+    <div class="chat-container">
+        <aside class="sidebar left-sidebar">
+            <header class="sidebar-header">
+                <h2>我的聊天室</h2>
+                <button id="add-room-btn">+</button>
+            </header>
+            <ul id="room-list" class="room-list">
+                <!-- 已加入的聊天室将在这里动态生成 -->
+            </ul>
+            <footer class="sidebar-footer">
+                <span id="username-display"></span>
+                <button id="logout-btn">退出登录</button>
+            </footer>
+        </aside>
+
+        <main class="main-content">
+            <header class="chat-header">
+                <h1 id="current-room-name">选择一个聊天室开始聊天</h1>
+            </header>
+            <div id="message-list" class="message-list">
+                <!-- 聊天消息将在这里动态生成 -->
+            </div>
+            <footer class="chat-footer">
+                <form id="message-form" class="message-form">
+                    <input type="text" id="message-input" placeholder="输入消息..." autocomplete="off" disabled>
+                    <button type="submit" disabled>发送</button>
+                </form>
+            </footer>
+        </main>
+
+        <aside class="sidebar right-sidebar" id="right-sidebar">
+            <header class="sidebar-header">
+                <h2>加入聊天室</h2>
+                <button id="close-sidebar-btn">×</button>
+            </header>
+            <ul id="joinable-room-list" class="room-list">
+                <!-- 可加入的聊天室将在这里动态生成 -->
+            </ul>
+        </aside>
+    </div>
+
+    <script src="chat.js"></script>
+</body>
+</html>

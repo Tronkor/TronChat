@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>聊天室管理</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="dashboard-container">
+        <header class="dashboard-header">
+            <h1>聊天室管理</h1>
+            <form class="add-room-form" id="add-room-form">
+                <label for="room-name-input">新增聊天室</label>
+                <input type="text" id="room-name-input" placeholder="请输入聊天室名称" required>
+                <button type="submit">新增</button>
+                <p id="error-message" class="error-message"></p>
+            </form>
+        </header>
+        <main class="room-grid" id="room-grid">
+            <!-- 聊天室卡片将在这里动态生成 -->
+        </main>
+    </div>
+    <script src="script.js"></script>
+</body>
+</html>
