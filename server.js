@@ -23,23 +23,41 @@ function handleHttpRequest(request, response) {
   // --- API Routing ---
   const apiRoutes = [
     // User routes
-    { method: 'POST', path: /^\/login$/, handler: handleLogin },
+    { method: 'POST', path: '/login', handler: handleLogin },
     // Room routes
-    { method: 'GET', path: /^\/api\/rooms\/all$/, handler: handleGetAllRooms },
-    { method: 'POST', path: /^\/api\/rooms\/add$/, handler: handleAddRoom },
-    { method: 'GET', path: /^\/api\/rooms\/joined$/, handler: handleGetJoinedRooms },
-    { method: 'GET', path: /^\/api\/rooms\/joinable$/, handler: handleGetJoinableRooms },
-    { method: 'POST', path: /^\/api\/rooms\/join$/, handler: handleJoinRoom },
-    { method: 'GET', path: /^\/api\/rooms\/messages$/, handler: handleGetMessages },
+    { method: 'GET', path: '/api/rooms/all', handler: handleGetAllRooms },
+    { method: 'POST', path: '/api/rooms/add', handler: handleAddRoom },
+    { method: 'GET', path: '/api/rooms/joined', handler: handleGetJoinedRooms },
+    { method: 'GET', path: '/api/rooms/joinable', handler: handleGetJoinableRooms },
+    { method: 'POST', path: '/api/rooms/join', handler: handleJoinRoom },
+    { method: 'GET', path: '/api/rooms/messages', handler: handleGetMessages },
     // Routes with path parameters
-    // { method: 'DELETE', path: /^\/api\/rooms\/(\d+)$/, handler: handleDeleteRoom },
-    // { method: 'PUT', path: /^\/api\/rooms\/(\d+)$/, handler: handleUpdateRoom },
+    { method: 'DELETE', path: '/api/rooms/:id', handler: handleDeleteRoom },
+    { method: 'PUT', path: '/api/rooms/:id', handler: handleUpdateRoom },
   ];
 
   for (const route of apiRoutes) {
-    const match = pathname.match(route.path);
-    if (method === route.method && match) {
-      const params = match.slice(1); // Extract path parameters
+    const routeParts = route.path.split('/');
+    const pathParts = pathname.split('/');
+    
+    if (routeParts.length !== pathParts.length) {
+      continue;
+    }
+
+    const params = {};
+    let isMatch = true;
+
+    for (let i = 0; i < routeParts.length; i++) {
+      if (routeParts[i].startsWith(':')) {
+        const paramName = routeParts[i].substring(1);
+        params[paramName] = pathParts[i];
+      } else if (routeParts[i] !== pathParts[i]) {
+        isMatch = false;
+        break;
+      }
+    }
+
+    if (isMatch && method === route.method) {
       return route.handler(request, response, query, params);
     }
   }
@@ -99,23 +117,65 @@ function handleAddRoom(request, response, query, params) {
   request.on('end', () => {
     const { roomTitle } = JSON.parse(requestBody);
     if (!roomTitle) {
-      response.writeHead(400, { 'Content-Type': 'application/json' });
-      response.end(JSON.stringify({ code: 400, msg: 'Room title is required.' }));
-      return;
+      return sendError(response, 400, 'Room title is required.');
     }
 
     const sql = "INSERT INTO rooms (title) VALUES (?)";
     db.run(sql, [roomTitle], function(err) {
       if (err) {
-        response.writeHead(409, { 'Content-Type': 'application/json' });
-        response.end(JSON.stringify({ code: 409, msg: `【${roomTitle}】已存在！` }));
-      } else {
-        response.writeHead(201, { 'Content-Type': 'application/json' });
-        response.end(JSON.stringify({ code: 201, result: `【${roomTitle}】创建成功！`, roomId: this.lastID }));
-        broadcastRoomList();
+        return sendError(response, 409, `【${roomTitle}】已存在！`);
       }
+      sendJSON(response, 201, { msg: `【${roomTitle}】创建成功！`, roomId: this.lastID });
+      broadcastRoomList();
     });
   });
+}
+
+function handleDeleteRoom(request, response, query, params) {
+  const { id: roomId } = params;
+  if (!roomId) {
+    return sendError(response, 400, 'Room ID is required.');
+  }
+
+  const sql = "DELETE FROM rooms WHERE id = ?";
+  db.run(sql, [roomId], function(err) {
+    if (err) {
+      return sendError(response, 500, 'Database error while deleting room.', err);
+    }
+    if (this.changes === 0) {
+      return sendError(response, 404, 'Room not found.');
+    }
+    sendJSON(response, 200, { msg: `房间 (ID: ${roomId}) 已成功删除。` });
+    broadcastRoomList();
+  });
+}
+
+function handleUpdateRoom(request, response, query, params) {
+    const { id: roomId } = params;
+    if (!roomId) {
+        return sendError(response, 400, 'Room ID is required.');
+    }
+
+    let body = '';
+    request.on('data', chunk => body += chunk.toString());
+    request.on('end', () => {
+        const { title } = JSON.parse(body);
+        if (!title) {
+            return sendError(response, 400, 'New room title is required.');
+        }
+
+        const sql = "UPDATE rooms SET title = ? WHERE id = ?";
+        db.run(sql, [title, roomId], function(err) {
+            if (err) {
+                return sendError(response, 500, 'Database error while updating room.', err);
+            }
+            if (this.changes === 0) {
+                return sendError(response, 404, 'Room not found.');
+            }
+            sendJSON(response, 200, { msg: `房间 (ID: ${roomId}) 已成功更新。` });
+            broadcastRoomList();
+        });
+    });
 }
 
 function handleGetAllRooms(request, response, query, params) {
@@ -127,12 +187,9 @@ function handleGetAllRooms(request, response, query, params) {
   `;
   db.all(sql, [], (err, rows) => {
     if (err) {
-      response.writeHead(500, { 'Content-Type': 'application/json' });
-      response.end(JSON.stringify({ code: 500, msg: 'Database error', error: err.message }));
-      return;
+      return sendError(response, 500, 'Database error', err);
     }
-    response.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
-    response.end(JSON.stringify(rows));
+    sendJSON(response, 200, rows);
   });
 }
 

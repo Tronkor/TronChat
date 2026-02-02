@@ -22,6 +22,25 @@ document.addEventListener('DOMContentLoaded', () => {
                 addRoom();
             }
         });
+
+        document.getElementById('room-grid').addEventListener('click', function(event) {
+            const target = event.target;
+            const roomId = target.dataset.id;
+
+            if (target.classList.contains('delete-btn')) {
+                if (confirm(`确定要删除这个聊天室吗？`)) {
+                    deleteRoom(roomId);
+                }
+            }
+
+            if (target.classList.contains('edit-btn')) {
+                const currentTitle = target.dataset.title;
+                const newTitle = prompt('请输入新的聊天室名称：', currentTitle);
+                if (newTitle && newTitle.trim() !== '' && newTitle.trim() !== currentTitle) {
+                    editRoom(roomId, newTitle.trim());
+                }
+            }
+        });
     }
 
     const API_BASE_URL = 'http://localhost:8080';
@@ -75,13 +94,17 @@ document.addEventListener('DOMContentLoaded', () => {
         rooms.forEach(room => {
             const card = document.createElement('div');
             card.className = 'room-card';
+            card.dataset.roomId = room.id;
             card.innerHTML = `
                 <div class="room-card-header">
                     <h3>${room.title}</h3>
                     <span class="online-count">在线: ${room.online_person || 0}</span>
                 </div>
                 <div class="room-card-body">
-                    <!-- Can add more info here later -->
+                    <div class="room-actions">
+                        <button class="edit-btn" data-id="${room.id}" data-title="${room.title}">编辑</button>
+                        <button class="delete-btn" data-id="${room.id}">删除</button>
+                    </div>
                 </div>
             `;
             roomGrid.appendChild(card);
@@ -112,6 +135,40 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (error) {
             console.error('Error adding room:', error);
             showError('网络错误，请稍后再试');
+        }
+    }
+
+    async function deleteRoom(roomId) {
+        try {
+            const response = await fetch(`${API_BASE_URL}/api/rooms/${roomId}`, {
+                method: 'DELETE',
+            });
+            const result = await response.json();
+            if (!response.ok) {
+                throw new Error(result.msg || '删除失败');
+            }
+            // 列表将通过WebSocket自动更新
+        } catch (error) {
+            console.error('Error deleting room:', error);
+            showError(error.message);
+        }
+    }
+
+    async function editRoom(roomId, newTitle) {
+        try {
+            const response = await fetch(`${API_BASE_URL}/api/rooms/${roomId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ title: newTitle }),
+            });
+            const result = await response.json();
+            if (!response.ok) {
+                throw new Error(result.msg || '更新失败');
+            }
+            // 列表将通过WebSocket自动更新
+        } catch (error) {
+            console.error('Error updating room:', error);
+            showError(error.message);
         }
     }
 
