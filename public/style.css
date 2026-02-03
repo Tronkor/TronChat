@@ -151,3 +151,26 @@ body {
         grid-template-columns: 1fr;
     }
 }
+
+.page-header {
+    position: fixed;
+    top: 0;
+    right: 0;
+    padding: 15px;
+    z-index: 1000;
+}
+
+.logout-button {
+    padding: 8px 16px;
+    background-color: #f44336;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: background-color 0.3s ease;
+}
+
+.logout-button:hover {
+    background-color: #d32f2f;
+}

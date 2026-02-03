@@ -8,6 +8,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const addRoomForm = document.getElementById('add-room-form');
         const roomNameInput = document.getElementById('room-name-input');
+        const logoutBtn = document.getElementById('logout-btn');
 
         connectWebSocket();
         fetchRooms();
@@ -21,6 +22,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 e.preventDefault();
                 addRoom();
             }
+        });
+
+        logoutBtn.addEventListener('click', () => {
+            sessionStorage.removeItem('isLoggedIn');
+            sessionStorage.removeItem('username');
+            window.location.href = 'index.html';
         });
 
         document.getElementById('room-grid').addEventListener('click', function(event) {
