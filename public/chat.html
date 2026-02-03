@@ -3,49 +3,45 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>聊天室</title>
+    <title>多房间在线聊天室</title>
     <link rel="stylesheet" href="chat.css">
 </head>
 <body>
-    <div class="chat-container">
-        <aside class="sidebar left-sidebar">
-            <header class="sidebar-header">
-                <h2>我的聊天室</h2>
-                <button id="add-room-btn">+</button>
-            </header>
+    <div class="chat-app">
+        <header class="main-header">
+            <h1>多房间在线聊天室</h1>
+        </header>
+
+        <aside class="left-sidebar">
+            <div class="sidebar-header">
+                <h2>聊天室列表</h2>
+            </div>
             <ul id="room-list" class="room-list">
-                <!-- 已加入的聊天室将在这里动态生成 -->
+                <!-- 房间列表将由JS动态填充 -->
             </ul>
-            <footer class="sidebar-footer">
-                <span id="username-display"></span>
-                <button id="logout-btn">退出登录</button>
-            </footer>
         </aside>
 
-        <main class="main-content">
+        <main class="chat-area">
             <header class="chat-header">
-                <h1 id="current-room-name">选择一个聊天室开始聊天</h1>
+                <h2 id="current-room-name">General</h2>
+                <button id="add-room-btn">+</button>
+                <div id="joinable-rooms-popup" class="joinable-rooms-popup hidden">
+                    <h3>可加入的聊天室</h3>
+                    <ul id="joinable-room-list">
+                        <!-- 可加入的房间将由JS动态填充 -->
+                    </ul>
+                </div>
             </header>
             <div id="message-list" class="message-list">
-                <!-- 聊天消息将在这里动态生成 -->
+                <!-- 消息将由JS动态填充 -->
             </div>
             <footer class="chat-footer">
-                <form id="message-form" class="message-form">
-                    <input type="text" id="message-input" placeholder="输入消息..." autocomplete="off" disabled>
-                    <button type="submit" disabled>发送</button>
+                <form id="message-form">
+                    <input type="text" id="message-input" placeholder="输入消息..." autocomplete="off">
+                    <button type="submit">发送</button>
                 </form>
             </footer>
         </main>
-
-        <aside class="sidebar right-sidebar" id="right-sidebar">
-            <header class="sidebar-header">
-                <h2>加入聊天室</h2>
-                <button id="close-sidebar-btn">×</button>
-            </header>
-            <ul id="joinable-room-list" class="room-list">
-                <!-- 可加入的聊天室将在这里动态生成 -->
-            </ul>
-        </aside>
     </div>
 
     <script src="chat.js"></script>

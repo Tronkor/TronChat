@@ -63,7 +63,7 @@ function handleHttpRequest(request, response) {
   }
 
   // --- Static File Serving ---
-  const filePath = pathname === '/' ? '/index.html' : pathname;
+  const filePath = pathname === '/' ? '/login.html' : pathname;
   const fullPath = path.join(__dirname, 'public', filePath);
   const extname = String(path.extname(fullPath)).toLowerCase();
   const mimeTypes = {
@@ -302,61 +302,83 @@ function broadcastRoomList() {
 
 webSocketServer.on('connection', function (ws) {
     console.log('Client connected');
-    ws.userId = null;
-    ws.currentRoomId = null;
+    ws.username = null;
 
     ws.on('message', async function (message) {
         try {
             const msg = JSON.parse(message.toString());
             console.log('Received message:', msg);
 
-            if (msg.type === 'joinRoom') {
-                getOrCreateUser(msg.user, (err, userId) => {
-                    if (err) return console.error(err);
-                    ws.userId = userId;
+            switch (msg.type) {
+                case 'register':
+                    ws.username = msg.username;
+                    console.log(`User ${ws.username} registered.`);
+                    break;
 
-                    db.get("SELECT id FROM rooms WHERE title = ?", [msg.roomTitle], (err, room) => {
-                        if (err || !room) return console.error("Room not found");
-                        
-                        const oldRoomId = ws.currentRoomId;
-                        if (oldRoomId) {
-                            db.run("DELETE FROM room_members WHERE room_id = ? AND user_id = ?", [oldRoomId, ws.userId]);
+                case 'getInitialData':
+                    const user = await getUser(ws.username);
+                    if (!user) return;
+                    const joinedRooms = await getJoinedRooms(user.id);
+                    const joinableRooms = await getJoinableRooms(user.id);
+                    ws.send(JSON.stringify({
+                        type: 'initialData',
+                        joinedRooms,
+                        joinableRooms
+                    }));
+                    break;
+
+                case 'userJoinRoom':
+                    const userToJoin = await getUser(msg.username);
+                    if (!userToJoin) return;
+                    await addUserToRoom(userToJoin.id, msg.roomId);
+                    broadcastRoomListUpdate();
+                    break;
+
+                case 'joinRoom': // This is for fetching messages for a room
+                    ws.currentRoomId = msg.roomId;
+                    // Fetch and send message history
+                    const sql = `
+                        SELECT m.content, m.timestamp as sendTime, u.username as userName
+                        FROM messages m
+                        JOIN users u ON m.user_id = u.id
+                        WHERE m.room_id = ?
+                        ORDER BY m.timestamp ASC
+                    `;
+                    db.all(sql, [msg.roomId], (err, rows) => {
+                        if (err) {
+                            console.error('Failed to fetch message history:', err);
+                            return;
                         }
-
-                        ws.currentRoomId = room.id;
-                        db.run("INSERT OR IGNORE INTO room_members (room_id, user_id) VALUES (?, ?)", [ws.currentRoomId, ws.userId], () => {
-                            broadcastRoomList();
-                        });
-                        
-                        ws.send(JSON.stringify({ type: 'joinRoomResponse', result: `Joined ${msg.roomTitle}` }));
+                        ws.send(JSON.stringify({ type: 'messageHistory', messages: rows }));
                     });
-                });
-            } else if (msg.type === 'sendMessage') {
-                if (!ws.userId || !ws.currentRoomId || ws.currentRoomId.toString() !== msg.roomId.toString()) {
-                    return ws.send(JSON.stringify({ type: 'error', message: 'Not in a valid room to send message.' }));
-                }
+                    break;
 
-                const { content } = msg;
-                const timestamp = new Date().toISOString();
+                case 'newMessage':
+                    const senderUser = await getUser(msg.sender);
+                    if (!senderUser || !msg.roomId) return;
+                    
+                    const timestamp = new Date().toISOString();
+                    db.run("INSERT INTO messages (content, timestamp, room_id, user_id) VALUES (?, ?, ?, ?)",
+                        [msg.content, timestamp, msg.roomId, senderUser.id],
+                        function (err) {
+                            if (err) return console.error('Failed to save message:', err);
 
-                db.run("INSERT INTO messages (content, timestamp, room_id, user_id) VALUES (?, ?, ?, ?)", 
-                    [content, timestamp, ws.currentRoomId, ws.userId], 
-                    function(err) {
-                        if (err) return console.error(err);
+                            const newMessage = {
+                                type: 'newMessage',
+                                roomId: msg.roomId,
+                                sender: msg.sender,
+                                content: msg.content,
+                                timestamp: timestamp
+                            };
 
-                        const newMessage = {
-                            userName: msg.user,
-                            sendTime: timestamp,
-                            content: content
-                        };
-
-                        webSocketServer.clients.forEach(client => {
-                            if (client.readyState === WebSocket.OPEN && client.currentRoomId === ws.currentRoomId) {
-                                client.send(JSON.stringify({ type: 'newMessage', message: newMessage }));
-                            }
-                        });
-                    }
-                );
+                            webSocketServer.clients.forEach(client => {
+                                if (client.readyState === WebSocket.OPEN && client.currentRoomId === msg.roomId) {
+                                    client.send(JSON.stringify(newMessage));
+                                }
+                            });
+                        }
+                    );
+                    break;
             }
         } catch (error) {
             console.error('Error processing message:', error);
@@ -364,14 +386,77 @@ webSocketServer.on('connection', function (ws) {
     });
 
     ws.on('close', () => {
-        console.log('Client disconnected');
-        if (ws.userId && ws.currentRoomId) {
-            db.run("DELETE FROM room_members WHERE room_id = ? AND user_id = ?", [ws.currentRoomId, ws.userId], () => {
-                broadcastRoomList();
-            });
-        }
+        console.log(`User ${ws.username} disconnected`);
+        // Optional: Handle user leaving all rooms, etc.
+        broadcastRoomListUpdate(); // Update online counts
     });
 });
+
+// --- WebSocket Helper Functions ---
+async function broadcastRoomListUpdate() {
+    for (const client of webSocketServer.clients) {
+        if (client.readyState === WebSocket.OPEN && client.username) {
+            const user = await getUser(client.username);
+            if (user) {
+                const joinedRooms = await getJoinedRooms(user.id);
+                const joinableRooms = await getJoinableRooms(user.id);
+                client.send(JSON.stringify({
+                    type: 'roomListUpdate',
+                    joinedRooms,
+                    joinableRooms
+                }));
+            }
+        }
+    }
+}
+
+// --- Database Helper Functions ---
+function getUser(username) {
+    return new Promise((resolve, reject) => {
+        db.get("SELECT * FROM users WHERE username = ?", [username], (err, row) => {
+            if (err) reject(err);
+            else resolve(row);
+        });
+    });
+}
+
+function getJoinedRooms(userId) {
+    return new Promise((resolve, reject) => {
+        const sql = `
+            SELECT r.id, r.title FROM rooms r
+            JOIN room_members rm ON r.id = rm.room_id
+            WHERE rm.user_id = ?
+        `;
+        db.all(sql, [userId], (err, rows) => {
+            if (err) reject(err);
+            else resolve(rows);
+        });
+    });
+}
+
+function getJoinableRooms(userId) {
+    return new Promise((resolve, reject) => {
+        const sql = `
+            SELECT r.id, r.title FROM rooms r
+            WHERE r.id NOT IN (SELECT rm.room_id FROM room_members rm WHERE rm.user_id = ?)
+        `;
+        db.all(sql, [userId], (err, rows) => {
+            if (err) reject(err);
+            else resolve(rows);
+        });
+    });
+}
+
+function addUserToRoom(userId, roomId) {
+    return new Promise((resolve, reject) => {
+        const sql = "INSERT OR IGNORE INTO room_members (user_id, room_id) VALUES (?, ?)";
+        db.run(sql, [userId, roomId], function(err) {
+            if (err) reject(err);
+            else resolve(this);
+        });
+    });
+}
+
 
 httpServer.listen(8080, () => {
     console.log('Server running at http://127.0.0.1:8080/');

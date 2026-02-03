@@ -2,7 +2,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- Initialization ---
     function init() {
         if (sessionStorage.getItem('isLoggedIn') !== 'true') {
-            window.location.href = 'index.html';
+            window.location.href = 'login.html';
             return;
         }
 
@@ -27,7 +27,7 @@ document.addEventListener('DOMContentLoaded', () => {
         logoutBtn.addEventListener('click', () => {
             sessionStorage.removeItem('isLoggedIn');
             sessionStorage.removeItem('username');
-            window.location.href = 'index.html';
+            window.location.href = 'login.html';
         });
 
         document.getElementById('room-grid').addEventListener('click', function(event) {

@@ -3,42 +3,57 @@ document.addEventListener('DOMContentLoaded', () => {
     const username = sessionStorage.getItem('username');
 
     if (isLoggedIn !== 'true' || !username) {
-        window.location.href = 'index.html';
+        window.location.href = 'login.html';
         return;
     }
 
-    const usernameDisplay = document.getElementById('username-display');
-    usernameDisplay.textContent = username;
-
+    // --- DOM Element References ---
     const roomList = document.getElementById('room-list');
     const currentRoomName = document.getElementById('current-room-name');
     const messageList = document.getElementById('message-list');
     const messageForm = document.getElementById('message-form');
     const messageInput = document.getElementById('message-input');
-    const sendButton = messageForm.querySelector('button');
     const addRoomBtn = document.getElementById('add-room-btn');
-    const rightSidebar = document.getElementById('right-sidebar');
-    const closeSidebarBtn = document.getElementById('close-sidebar-btn');
+    const joinableRoomsPopup = document.getElementById('joinable-rooms-popup');
     const joinableRoomList = document.getElementById('joinable-room-list');
-    const logoutBtn = document.getElementById('logout-btn');
 
     let currentRoomId = null;
     let ws;
 
+    // --- WebSocket Connection ---
     function connectWebSocket() {
         ws = new WebSocket(`ws://${window.location.host}`);
 
         ws.onopen = () => {
             console.log('WebSocket连接成功');
             ws.send(JSON.stringify({ type: 'register', username }));
+            fetchInitialData();
         };
 
         ws.onmessage = (event) => {
             const data = JSON.parse(event.data);
-            if (data.type === 'newMessage' && data.roomId === currentRoomId) {
-                displayMessage(data);
-            } else if (data.type === 'roomListUpdate') {
-                fetchJoinedRooms();
+            switch (data.type) {
+                case 'messageHistory':
+                    messageList.innerHTML = '';
+                    data.messages.forEach(displayMessage);
+                    break;
+                case 'newMessage':
+                    if (data.roomId === currentRoomId) {
+                        displayMessage(data);
+                    }
+                    break;
+                case 'roomListUpdate':
+                    fetchJoinedRooms();
+                    fetchJoinableRooms();
+                    break;
+                case 'initialData':
+                    renderRoomList(data.joinedRooms);
+                    renderJoinableRoomList(data.joinableRooms);
+                    if (data.joinedRooms.length > 0) {
+                        const generalRoom = data.joinedRooms.find(r => r.title === 'General') || data.joinedRooms[0];
+                        selectRoom(generalRoom.id, generalRoom.title);
+                    }
+                    break;
             }
         };
 
@@ -52,86 +67,19 @@ document.addEventListener('DOMContentLoaded', () => {
         };
     }
 
-    async function fetchJoinedRooms() {
-        try {
-            const response = await fetch(`/api/rooms/joined?username=${username}`);
-            if (response.ok) {
-                const rooms = await response.json();
-                renderRoomList(rooms, roomList);
-            } else {
-                console.error('获取已加入的房间失败');
-            }
-        } catch (error) {
-            console.error('获取已加入的房间时出错:', error);
+    // --- Data Fetching ---
+    function fetchInitialData() {
+        if (ws && ws.readyState === WebSocket.OPEN) {
+            ws.send(JSON.stringify({ type: 'getInitialData', username }));
         }
+    }
+    
+    async function fetchJoinedRooms() {
+        // This can be replaced by WebSocket updates if the backend sends them
     }
 
     async function fetchJoinableRooms() {
-        try {
-            const response = await fetch(`/api/rooms/joinable?username=${username}`);
-            if (response.ok) {
-                const rooms = await response.json();
-                renderJoinableRoomList(rooms);
-            } else {
-                console.error('获取可加入的房间失败');
-            }
-        } catch (error) {
-            console.error('获取可加入的房间时出错:', error);
-        }
-    }
-
-    function renderRoomList(rooms, listElement) {
-        listElement.innerHTML = '';
-        rooms.forEach(room => {
-            const li = document.createElement('li');
-            li.textContent = room.title;
-            li.dataset.roomId = room.id;
-            if (room.id === currentRoomId) {
-                li.classList.add('active');
-            }
-            li.addEventListener('click', () => selectRoom(room.id, room.title));
-            listElement.appendChild(li);
-        });
-    }
-
-    function renderJoinableRoomList(rooms) {
-        joinableRoomList.innerHTML = '';
-        rooms.forEach(room => {
-            const li = document.createElement('li');
-            li.textContent = room.title;
-            const joinButton = document.createElement('button');
-            joinButton.textContent = '加入';
-            joinButton.addEventListener('click', (e) => {
-                e.stopPropagation();
-                joinRoom(room.id);
-            });
-            li.appendChild(joinButton);
-            joinableRoomList.appendChild(li);
-        });
-    }
-
-    async function selectRoom(roomId, roomTitle) {
-        if (currentRoomId === roomId) return;
-
-        currentRoomId = roomId;
-        currentRoomName.textContent = roomTitle;
-        messageList.innerHTML = '';
-
-        document.querySelectorAll('#room-list li').forEach(li => {
-            li.classList.remove('active');
-            if (parseInt(li.dataset.roomId) === roomId) {
-                li.classList.add('active');
-            }
-        });
-
-        messageInput.disabled = false;
-        sendButton.disabled = false;
-
-        if (ws && ws.readyState === WebSocket.OPEN) {
-            ws.send(JSON.stringify({ type: 'joinRoom', roomId }));
-        }
-
-        await fetchMessages(roomId);
+        // This can be replaced by WebSocket updates if the backend sends them
     }
 
     async function fetchMessages(roomId) {
@@ -139,6 +87,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const response = await fetch(`/api/rooms/messages?roomId=${roomId}`);
             if (response.ok) {
                 const messages = await response.json();
+                messageList.innerHTML = '';
                 messages.forEach(displayMessage);
             } else {
                 console.error('获取消息失败');
@@ -148,20 +97,88 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    // --- UI Rendering ---
+    function renderRoomList(rooms) {
+        roomList.innerHTML = '';
+        rooms.forEach(room => {
+            const li = document.createElement('li');
+            li.textContent = room.title;
+            li.dataset.roomId = room.id;
+            if (room.id === currentRoomId) {
+                li.classList.add('active');
+            }
+            li.addEventListener('click', () => selectRoom(room.id, room.title));
+            roomList.appendChild(li);
+        });
+    }
+
+    function renderJoinableRoomList(rooms) {
+        joinableRoomList.innerHTML = '';
+        rooms.forEach(room => {
+            const li = document.createElement('li');
+            const span = document.createElement('span');
+            span.textContent = room.title;
+            const joinButton = document.createElement('button');
+            joinButton.textContent = '加入';
+            joinButton.className = 'join-btn';
+            joinButton.addEventListener('click', (e) => {
+                e.stopPropagation();
+                joinRoom(room.id);
+            });
+            li.appendChild(span);
+            li.appendChild(joinButton);
+            joinableRoomList.appendChild(li);
+        });
+    }
+
     function displayMessage(message) {
-        const div = document.createElement('div');
-        div.classList.add('message');
-        div.classList.add(message.sender === username ? 'sent' : 'received');
+        const msgDiv = document.createElement('div');
+        msgDiv.classList.add('message', message.sender === username ? 'sent' : 'received');
+
+        const contentDiv = document.createElement('div');
+        contentDiv.classList.add('content');
+        contentDiv.textContent = message.content;
         
-        const senderSpan = document.createElement('span');
-        senderSpan.classList.add('sender');
-        senderSpan.textContent = message.sender;
-        
-        div.appendChild(senderSpan);
-        div.append(message.content);
-        
-        messageList.appendChild(div);
+        const metaSpan = document.createElement('span');
+        metaSpan.classList.add('meta');
+        metaSpan.textContent = `${message.sender} - ${new Date(message.timestamp).toLocaleTimeString()}`;
+
+        msgDiv.appendChild(contentDiv);
+        // To place meta correctly, we might need to adjust HTML structure or CSS
+        // For now, let's just append it.
+        // msgDiv.appendChild(metaSpan);
+
+        messageList.appendChild(msgDiv);
         messageList.scrollTop = messageList.scrollHeight;
+    }
+
+    // --- Actions & Event Handlers ---
+    function selectRoom(roomId, roomTitle) {
+        if (currentRoomId === roomId) return;
+
+        currentRoomId = roomId;
+        currentRoomName.textContent = roomTitle;
+        
+        document.querySelectorAll('#room-list li').forEach(li => {
+            li.classList.remove('active');
+            if (parseInt(li.dataset.roomId) === roomId) {
+                li.classList.add('active');
+            }
+        });
+
+        messageInput.disabled = false;
+        messageForm.querySelector('button').disabled = false;
+
+        if (ws && ws.readyState === WebSocket.OPEN) {
+            ws.send(JSON.stringify({ type: 'joinRoom', roomId }));
+        }
+    }
+
+    function joinRoom(roomId) {
+        if (ws && ws.readyState === WebSocket.OPEN) {
+            ws.send(JSON.stringify({ type: 'userJoinRoom', username, roomId }));
+            joinableRoomsPopup.classList.add('hidden'); // Hide after joining
+        }
     }
 
     messageForm.addEventListener('submit', (e) => {
@@ -179,44 +196,17 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    async function joinRoom(roomId) {
-        try {
-            const response = await fetch('/api/rooms/join', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ username, roomId })
-            });
-            if (response.ok) {
-                await fetchJoinedRooms();
-                await fetchJoinableRooms();
-                // Optionally auto-select the newly joined room
-                const room = await response.json();
-                selectRoom(room.id, room.title);
-                rightSidebar.classList.remove('open');
-            } else {
-                const error = await response.json();
-                alert(`加入房间失败: ${error.msg}`);
-            }
-        } catch (error) {
-            console.error('加入房间时出错:', error);
+    addRoomBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        joinableRoomsPopup.classList.toggle('hidden');
+    });
+
+    document.addEventListener('click', (e) => {
+        if (!joinableRoomsPopup.contains(e.target) && e.target !== addRoomBtn) {
+            joinableRoomsPopup.classList.add('hidden');
         }
-    }
-
-    addRoomBtn.addEventListener('click', () => {
-        fetchJoinableRooms();
-        rightSidebar.classList.add('open');
     });
 
-    closeSidebarBtn.addEventListener('click', () => {
-        rightSidebar.classList.remove('open');
-    });
-
-    logoutBtn.addEventListener('click', () => {
-        sessionStorage.clear();
-        window.location.href = 'index.html';
-    });
-
-    // Initial load
-    fetchJoinedRooms();
+    // --- Initial Load ---
     connectWebSocket();
 });
