@@ -49,8 +49,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                     break;
                 case 'roomListUpdate':
-                    fetchJoinedRooms();
-                    fetchJoinableRooms();
+                    fetchInitialData();
                     break;
                 case 'initialData':
                     renderRoomList(data.joinedRooms);

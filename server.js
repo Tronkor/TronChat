@@ -394,18 +394,10 @@ webSocketServer.on('connection', function (ws) {
 
 // --- WebSocket Helper Functions ---
 async function broadcastRoomListUpdate() {
+    const message = JSON.stringify({ type: 'roomListUpdate' });
     for (const client of webSocketServer.clients) {
-        if (client.readyState === WebSocket.OPEN && client.username) {
-            const user = await getUser(client.username);
-            if (user) {
-                const joinedRooms = await getJoinedRooms(user.id);
-                const joinableRooms = await getJoinableRooms(user.id);
-                client.send(JSON.stringify({
-                    type: 'roomListUpdate',
-                    joinedRooms,
-                    joinableRooms
-                }));
-            }
+        if (client.readyState === WebSocket.OPEN) {
+            client.send(message);
         }
     }
 }
