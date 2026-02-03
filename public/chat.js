@@ -16,6 +16,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const addRoomBtn = document.getElementById('add-room-btn');
     const joinableRoomsPopup = document.getElementById('joinable-rooms-popup');
     const joinableRoomList = document.getElementById('joinable-room-list');
+    const welcomeMessage = document.getElementById('welcome-message');
+    const logoutBtn = document.getElementById('logout-btn');
+
+    // --- Initial Setup ---
+    welcomeMessage.textContent = `欢迎你，${username}`;
 
     let currentRoomId = null;
     let ws;
@@ -220,6 +225,12 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!joinableRoomsPopup.contains(e.target) && e.target !== addRoomBtn) {
             joinableRoomsPopup.classList.add('hidden');
         }
+    });
+
+    logoutBtn.addEventListener('click', () => {
+        sessionStorage.removeItem('isLoggedIn');
+        sessionStorage.removeItem('username');
+        window.location.href = 'login.html';
     });
 
     // --- Initial Load ---

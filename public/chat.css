@@ -28,14 +28,44 @@ body {
     grid-column: 1 / -1;
     display: flex;
     align-items: center;
-    justify-content: center;
+    justify-content: space-between; /* Changed from center */
+    padding: 0 20px; /* Added padding */
     border-bottom: 1px solid #e0e0e0;
     background-color: #fff;
+    position: relative; /* For positioning user info */
 }
 
 .main-header h1 {
     font-size: 20px;
     font-weight: 600;
+    color: #333;
+    margin: 0; /* Reset margin */
+}
+
+.user-info {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+#welcome-message {
+    font-size: 14px;
+    color: #555;
+}
+
+#logout-btn {
+    background: none;
+    border: 1px solid #ccc;
+    color: #555;
+    padding: 5px 10px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: background-color 0.2s, color 0.2s;
+}
+
+#logout-btn:hover {
+    background-color: #f0f2f5;
     color: #333;
 }
 
