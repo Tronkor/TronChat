@@ -18,6 +18,15 @@ body {
     text-align: center;
 }
 
+.button-group {
+    display: flex;
+    gap: 10px; /* Creates space between the buttons */
+}
+
+.button-group button {
+    flex: 1; /* Each button will take up equal space */
+}
+
 h2 {
     margin-top: 0;
     margin-bottom: 1.5rem;
@@ -48,7 +57,7 @@ h2 {
 button {
     width: 100%;
     padding: 0.75rem;
-    border: none;
+    border: 1px solid #007bff;
     border-radius: 4px;
     background-color: #007bff;
     color: white;

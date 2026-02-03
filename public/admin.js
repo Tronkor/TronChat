@@ -105,7 +105,7 @@ document.addEventListener('DOMContentLoaded', () => {
             card.innerHTML = `
                 <div class="room-card-header">
                     <h3>${room.title}</h3>
-                    <span class="online-count">在线: ${room.online_person || 0}</span>
+                    <span class="online-count">总人数: ${room.online_person || 0}</span>
                 </div>
                 <div class="room-card-body">
                     <div class="room-actions">

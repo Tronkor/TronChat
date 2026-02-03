@@ -24,6 +24,7 @@ function handleHttpRequest(request, response) {
   const apiRoutes = [
     // User routes
     { method: 'POST', path: '/login', handler: handleLogin },
+    { method: 'POST', path: '/api/register', handler: handleRegister },
     // Room routes
     { method: 'GET', path: '/api/rooms/all', handler: handleGetAllRooms },
     { method: 'POST', path: '/api/rooms/add', handler: handleAddRoom },
@@ -96,19 +97,41 @@ function handleLogin(request, response) {
   request.on('end', () => {
     const { username, password } = JSON.parse(body);
 
-    if (username === 'admin') {
-      db.get("SELECT * FROM users WHERE username = ? AND password = ?", [username, password], (err, user) => {
-        if (err) return sendError(response, 500, '数据库错误', err);
-        if (user) return sendJSON(response, 200, { msg: '登录成功', role: 'admin' });
-        sendError(response, 401, '管理员用户名或密码错误');
-      });
-    } else {
-      getOrCreateUser(username, (err, userId) => {
-        if (err) return sendError(response, 500, '数据库错误', err);
-        sendJSON(response, 200, { msg: '登录成功', role: 'user', userId: userId });
-      });
+    if (!username || !password) {
+      return sendError(response, 400, '用户名和密码不能为空');
     }
+
+    db.get("SELECT * FROM users WHERE username = ? AND password = ?", [username, password], (err, user) => {
+      if (err) return sendError(response, 500, '数据库错误', err);
+      if (!user) return sendError(response, 401, '用户名或密码错误');
+
+      const role = user.username === 'admin' ? 'admin' : 'user';
+      sendJSON(response, 200, { msg: '登录成功', role: role, userId: user.id });
+    });
   });
+}
+
+function handleRegister(request, response) {
+    let body = '';
+    request.on('data', chunk => { body += chunk.toString(); });
+    request.on('end', () => {
+        const { username, password } = JSON.parse(body);
+
+        if (!username || !password) {
+            return sendError(response, 400, '用户名和密码不能为空');
+        }
+
+        const sql = "INSERT INTO users (username, password) VALUES (?, ?)";
+        db.run(sql, [username, password], function(err) {
+            if (err) {
+                if (err.message.includes('UNIQUE constraint failed')) {
+                    return sendError(response, 409, '用户名已存在');
+                }
+                return sendError(response, 500, '数据库错误', err);
+            }
+            sendJSON(response, 201, { msg: '注册成功', userId: this.lastID });
+        });
+    });
 }
 
 function handleAddRoom(request, response, query, params) {
@@ -269,18 +292,6 @@ function sendJSON(response, code, data) {
 
 const httpServer = http.createServer(handleHttpRequest);
 const webSocketServer = new WebSocket.Server({ server: httpServer });
-
-function getOrCreateUser(username, callback) {
-  db.get("SELECT id FROM users WHERE username = ?", [username], (err, row) => {
-    if (err) return callback(err);
-    if (row) return callback(null, row.id);
-    
-    db.run("INSERT INTO users (username) VALUES (?)", [username], function(err) {
-      if (err) return callback(err);
-      callback(null, this.lastID);
-    });
-  });
-}
 
 function broadcastRoomList() {
     const sql = `
