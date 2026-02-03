@@ -189,45 +189,50 @@ body {
     flex-grow: 1;
     padding: 20px;
     overflow-y: auto;
+    display: flex;
+    flex-direction: column;
 }
 
 .message {
     display: flex;
+    flex-direction: column;
     margin-bottom: 15px;
+    max-width: 75%;
+}
+
+.message.sent {
+    align-self: flex-end;
+    align-items: flex-end;
+}
+
+.message.received {
+    align-self: flex-start;
+    align-items: flex-start;
 }
 
 .message .content {
-    max-width: 70%;
     padding: 10px 15px;
     border-radius: 18px;
     line-height: 1.4;
+    word-wrap: break-word;
 }
 
 .message.sent .content {
-    background-color: #e8f0fe;
+    background-color: #dcf8c6; /* A light green, similar to WhatsApp */
     color: #333;
-    border-top-right-radius: 4px;
-    margin-left: auto;
 }
 
 .message.received .content {
     background-color: #f0f2f5;
     color: #333;
-    border-top-left-radius: 4px;
 }
 
 .message .meta {
     font-size: 12px;
     color: #888;
-    margin: 0 5px;
-}
-
-.message.sent .meta {
-    align-self: flex-end;
-}
-
-.message.received .meta {
-    align-self: flex-start;
+    margin-top: 5px;
+    margin-right: 8px;
+    margin-left: 8px;
 }
 
 /* Chat footer and message form */

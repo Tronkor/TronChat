@@ -35,7 +35,13 @@ document.addEventListener('DOMContentLoaded', () => {
             switch (data.type) {
                 case 'messageHistory':
                     messageList.innerHTML = '';
-                    data.messages.forEach(displayMessage);
+                    data.messages.forEach(msg => {
+                        displayMessage({
+                            sender: msg.userName,
+                            content: msg.content,
+                            timestamp: msg.sendTime
+                        });
+                    });
                     break;
                 case 'newMessage':
                     if (data.roomId === currentRoomId) {
@@ -131,22 +137,32 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    function formatTimestamp(timestamp) {
+        const date = new Date(timestamp);
+        const year = date.getFullYear();
+        const month = (date.getMonth() + 1).toString().padStart(2, '0');
+        const day = date.getDate().toString().padStart(2, '0');
+        const hours = date.getHours().toString().padStart(2, '0');
+        const minutes = date.getMinutes().toString().padStart(2, '0');
+        return `${year}年${month}月${day}日 ${hours}:${minutes}`;
+    }
+
     function displayMessage(message) {
         const msgDiv = document.createElement('div');
         msgDiv.classList.add('message', message.sender === username ? 'sent' : 'received');
 
         const contentDiv = document.createElement('div');
         contentDiv.classList.add('content');
-        contentDiv.textContent = message.content;
+        // 将发送者和消息内容拼接
+        contentDiv.textContent = `${message.sender}: ${message.content}`;
         
         const metaSpan = document.createElement('span');
         metaSpan.classList.add('meta');
-        metaSpan.textContent = `${message.sender} - ${new Date(message.timestamp).toLocaleTimeString()}`;
+        // 格式化时间戳
+        metaSpan.textContent = formatTimestamp(message.timestamp);
 
         msgDiv.appendChild(contentDiv);
-        // To place meta correctly, we might need to adjust HTML structure or CSS
-        // For now, let's just append it.
-        // msgDiv.appendChild(metaSpan);
+        msgDiv.appendChild(metaSpan); // 将时间戳附加到消息div
 
         messageList.appendChild(msgDiv);
         messageList.scrollTop = messageList.scrollHeight;
