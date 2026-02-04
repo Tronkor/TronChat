@@ -1,56 +1,84 @@
 const sqlite3 = require('sqlite3').verbose();
-const DB_PATH = './chatroom.db';
+const fs = require('fs');
 
-const db = new sqlite3.Database(DB_PATH, (err) => {
+const dbPath = './chatroom.db';
+const dbExists = fs.existsSync(dbPath);
+
+const db = new sqlite3.Database(dbPath, (err) => {
   if (err) {
-    console.error('Error opening database', err.message);
+    console.error('Error opening database:', err.message);
   } else {
     console.log('Connected to the SQLite database.');
-    initializeDatabase(); // <--- 在连接成功后调用初始化函数    
+    if (!dbExists) {
+      console.log('Database file not found, initializing...');
+      initializeDatabase();
+    }
   }
 });
 
 function initializeDatabase() {
   db.serialize(() => {
-    // 使用 IF NOT EXISTS 确保表不存在时才创建
-    db.run(`CREATE TABLE IF NOT EXISTS users (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      username TEXT UNIQUE NOT NULL,
-      password TEXT NOT NULL
-    )`);
+    // Create users table
+    db.run(`
+      CREATE TABLE IF NOT EXISTS users (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        username TEXT UNIQUE NOT NULL,
+        password TEXT
+      )
+    `);
 
-    db.run(`CREATE TABLE IF NOT EXISTS rooms (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      title TEXT UNIQUE NOT NULL
-    )`);
-
-    db.run(`CREATE TABLE IF NOT EXISTS messages (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      content TEXT NOT NULL,
-      timestamp TEXT NOT NULL,
-      room_id INTEGER,
-      user_id INTEGER,
-      FOREIGN KEY (room_id) REFERENCES rooms(id) ON DELETE CASCADE,
-      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-    )`);
-
-    db.run(`CREATE TABLE IF NOT EXISTS room_members (
-      user_id INTEGER,
-      room_id INTEGER,
-      PRIMARY KEY (user_id, room_id),
-      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
-      FOREIGN KEY (room_id) REFERENCES rooms(id) ON DELETE CASCADE
-    )`);
-
-    // --- 填充初始数据 ---
-    const initialRooms = ['技术交流', '霸天虎', '聊天室1'];
-    const stmt = db.prepare("INSERT OR IGNORE INTO rooms (title) VALUES (?)");
-    initialRooms.forEach(room => {
-      stmt.run(room);
+    // Insert admin user
+    db.run(`INSERT OR IGNORE INTO users (username, password) VALUES (?, ?)`, ['admin', '123456'], (err) => {
+      if (err) {
+        console.error('Error initializing admin user:', err.message);
+      } else {
+        console.log('Admin user initialized.');
+      }
     });
-    stmt.finalize();
 
-    console.log('Database schema and initial data are ready.');
+    // Create rooms table
+    db.run(`
+      CREATE TABLE IF NOT EXISTS rooms (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        title TEXT UNIQUE NOT NULL
+      )
+    `);
+
+    // Create messages table
+    db.run(`
+      CREATE TABLE IF NOT EXISTS messages (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        room_id INTEGER NOT NULL,
+        user_id INTEGER NOT NULL,
+        content TEXT NOT NULL,
+        timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (room_id) REFERENCES rooms(id) ON DELETE CASCADE,
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+      )
+    `);
+
+    // Create room_members table
+    db.run(`
+      CREATE TABLE IF NOT EXISTS room_members (
+        room_id INTEGER NOT NULL,
+        user_id INTEGER NOT NULL,
+        PRIMARY KEY (room_id, user_id),
+        FOREIGN KEY (room_id) REFERENCES rooms(id) ON DELETE CASCADE,
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+      )
+    `);
+
+    // Insert initial rooms
+    const rooms = ['General', 'Technology', 'Random'];
+    const stmt = db.prepare('INSERT INTO rooms (title) VALUES (?)');
+    rooms.forEach(room => stmt.run(room));
+    stmt.finalize((err) => {
+        if (!err) {
+            console.log('Initial rooms created successfully.');
+        }
+    });
+
+    console.log('Database initialized successfully.');
   });
 }
 
