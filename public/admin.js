@@ -56,8 +56,8 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    const API_BASE_URL = 'http://localhost:8080';
-    const WS_URL = 'ws://localhost:8080';
+    const API_BASE_URL = ''; // Use relative paths
+    const WS_URL = `ws://${window.location.host}`;
     let ws = null;
 
     // --- WebSocket Handling ---
