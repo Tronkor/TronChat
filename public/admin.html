@@ -7,9 +7,12 @@
     <link rel="stylesheet" href="admin.css">
 </head>
 <body>
+<!--
     <header class="page-header">
         <button id="logout-btn" class="logout-button">退出登录</button>
     </header>
+-->    
+    
     <div class="dashboard-container">
         <header class="dashboard-header">
             <h1>聊天室管理面板</h1>
@@ -17,6 +20,10 @@
                 <input type="text" id="room-name-input" placeholder="输入新聊天室名称" required>
                 <button type="submit">创建聊天室</button>
             </form>
+            <div class="user-info">
+                <span id="welcome-message"></span>
+                <button id="logout-btn">退出登录</button>
+            </div>            
         </header>
         <p id="error-message" class="error-message" style="display: none;"></p>
         <main>

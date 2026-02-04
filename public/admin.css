@@ -152,15 +152,18 @@ body {
     }
 }
 
-.page-header {
-    position: fixed;
-    top: 0;
-    right: 0;
-    padding: 15px;
-    z-index: 1000;
+.user-info {
+    display: flex;
+    align-items: center;
+    gap: 15px;
 }
 
-.logout-button {
+#welcome-message {
+    font-size: 14px;
+    color: #555;
+}
+
+#logout-btn {
     padding: 8px 16px;
     background-color: #f44336;
     color: white;
@@ -171,6 +174,7 @@ body {
     transition: background-color 0.3s ease;
 }
 
-.logout-button:hover {
-    background-color: #d32f2f;
+#logout-btn:hover {
+    background-color: #f0f2f5;
+    color: #333;
 }

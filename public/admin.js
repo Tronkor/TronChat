@@ -6,6 +6,12 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
+        const username = sessionStorage.getItem('username');
+        const welcomeMessage = document.getElementById('welcome-message');
+        if (username && welcomeMessage) {
+            welcomeMessage.textContent = `欢迎你，${username}`;
+        }
+
         const addRoomForm = document.getElementById('add-room-form');
         const roomNameInput = document.getElementById('room-name-input');
         const logoutBtn = document.getElementById('logout-btn');
