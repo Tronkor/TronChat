@@ -11,5 +11,5 @@
 npm-debug.log*
 
 # IDE and OS files
-.vscode
+
 .DS_Store
